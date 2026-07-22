@@ -97,3 +97,4 @@ If your data includes real `opex`, these numbers will reflect it. Everything
 else is derived purely from units, price, and cost. The AI Insights feature is
 told about these same assumptions and instructed not to invent numbers or
 markets beyond what's in your data.
+# MIS_DASHBOARD
