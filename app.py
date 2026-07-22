@@ -164,7 +164,7 @@ def insights():
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-3.5-flash")
+        model = genai.GenerativeModel("gemini-3.1-flash-lite")
         resp = model.generate_content(prompt)
         text = resp.text
     except Exception as e:
