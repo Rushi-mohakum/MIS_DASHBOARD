@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MIS Dashboard — Upload Data</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #101a2c; --panel-border: #1e2c42;
+    --text: #eef2f6; --muted: #8a97a8; --accent: #e8a33d;
+    --navy: #1f4e5f; --red: #e05a4e; --green: #3fbf7f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; align-items: center; justify-content: center; padding: 40px 20px;
+  }
+  .wrap { max-width: 640px; width: 100%; }
+  .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; text-align: center; }
+  h1 { text-align: center; font-size: 30px; margin: 0 0 8px; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+  .flash { padding: 12px 16px; border-radius: 8px; margin-bottom: 18px; font-size: 14px; border: 1px solid; }
+  .flash.error { background: rgba(224,90,78,0.1); color: var(--red); border-color: rgba(224,90,78,0.3); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 14px; padding: 32px;
+  }
+  .dropzone {
+    border: 2px dashed var(--panel-border); border-radius: 12px;
+    padding: 40px 20px; text-align: center; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(232,163,61,0.05); }
+  .dropzone svg { margin-bottom: 12px; opacity: 0.7; }
+  .dropzone .main-text { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .dropzone .sub-text { font-size: 13px; color: var(--muted); }
+  .filename-shown { color: var(--accent); font-weight: 600; margin-top: 10px; font-size: 13px; }
+  input[type=file] { display: none; }
+
+  .row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+  .row label { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .row input {
+    background: #0d1626; border: 1px solid var(--panel-border); color: var(--text);
+    padding: 9px 12px; border-radius: 8px; font-size: 13px; width: 90px;
+  }
+
+  button {
+    width: 100%; margin-top: 24px;
+    background: var(--navy); color: white; border: none;
+    padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  button:hover { background: #163a47; }
+
+  .schema {
+    margin-top: 28px; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 14px; padding: 24px 28px; font-size: 13px; color: var(--muted); line-height: 1.7;
+  }
+  .schema h3 { color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px; }
+  .schema code {
+    background: #0d1626; padding: 2px 7px; border-radius: 5px; color: var(--accent);
+    font-size: 12.5px;
+  }
+  .schema .note { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--panel-border); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">MANAGEMENT INFORMATION SYSTEM</div>
+  <h1>Upload your data, get a dashboard</h1>
+  <div class="subtitle">Excel, CSV, PDF, or Word — nothing is stored, everything runs in this session</div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="card">
+    <form method="POST" action="{{ url_for('dashboard') }}" enctype="multipart/form-data" id="uploadForm">
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e8a33d" stroke-width="1.6"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+        <div class="main-text">Click to choose a file, or drag it here</div>
+        <div class="sub-text">.xlsx · .xls · .csv · .pdf · .docx</div>
+        <div class="filename-shown" id="filenameShown"></div>
+      </label>
+      <input type="file" name="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf,.docx" required>
+
+      <div class="row">
+        <label for="tax_rate">Tax rate for Net Profit (%)</label>
+        <input type="number" name="tax_rate" id="tax_rate" value="25" min="0" max="100" step="1">
+      </div>
+
+      <button type="submit">Generate Dashboard</button>
+    </form>
+  </div>
+
+  <div class="schema">
+    <h3>Recommended columns</h3>
+    Any of these names (case-insensitive) are auto-detected — you don't need an exact match:<br><br>
+    <code>date</code> · <code>product</code> · <code>category</code> · <code>units_sold</code> ·
+    <code>unit_price</code> or <code>net_sales</code> · <code>unit_cost</code> or <code>cogs</code> ·
+    <code>opex</code> (optional) · <code>stock_qty</code> · <code>reorder_level</code> (optional)
+    <div class="note">
+      Missing columns don't break anything — the dashboard fills in sensible defaults and tells you
+      what's missing at the top. PDF/Word files need an actual data table inside them (not a scanned image).
+    </div>
+  </div>
+
+  <div class="schema">
+    <h3>✨ AI Insights {% if has_api_key %}<span style="color:#3fbf7f;font-size:11px;">● configured</span>{% else %}<span style="color:#e05a4e;font-size:11px;">● not configured</span>{% endif %}</h3>
+    {% if has_api_key %}
+    The dashboard will show a "Generate Insights" button that analyzes your uploaded data and suggests
+    which KPIs to watch, where output could improve, and where to focus investment.
+    {% else %}
+    To enable AI-generated insights on the dashboard, set an environment variable before running the app:<br><br>
+    <code>export GEMINI_API_KEY=your-key-here</code> (Mac/Linux)<br>
+    <code>set GEMINI_API_KEY=your-key-here</code> (Windows)<br><br>
+    Get a free key at <code>aistudio.google.com</code> — no credit card required. See README.md for details.
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const input = document.getElementById('fileInput');
+  const zone = document.getElementById('dropzone');
+  const shown = document.getElementById('filenameShown');
+  input.addEventListener('change', () => {
+    shown.textContent = input.files.length ? '✓ ' + input.files[0].name : '';
+  });
+  ['dragenter','dragover'].forEach(evt => zone.addEventListener(evt, e => {
+    e.preventDefault(); zone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(evt => zone.addEventListener(evt, e => {
+    e.preventDefault(); zone.classList.remove('drag');
+  }));
+  zone.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) {
+      input.files = e.dataTransfer.files;
+      shown.textContent = '✓ ' + input.files[0].name;
+    }
+  });
+</script>
+</body>
+</html>
