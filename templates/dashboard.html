@@ -1,425 +1,380 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>MIS Dashboard — {{ filename }}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-  :root {
-    --bg: #0b1220; --panel: #101a2c; --panel-border: #1e2c42;
-    --text: #eef2f6; --muted: #8a97a8;
-    --orange: #e8a33d; --teal: #2fb6c4; --green: #3fbf7f; --purple: #b07fe0; --red: #e05a4e; --blue: #5b8def;
-    --navy: #1f4e5f;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
-  header {
-    background: #0d1626; border-bottom: 1px solid var(--panel-border);
-    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  }
-  header .brand { font-size: 15px; font-weight: 600; color: var(--muted); }
-  header .brand span { color: var(--orange); }
-  header .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  header a.new-upload, header .btn-ghost, header a.btn-ghost {
-    color: var(--text); background: var(--navy); text-decoration: none;
-    padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-    border: none; cursor: pointer; display: inline-block;
-  }
-  header .btn-ghost, header a.btn-ghost { background: transparent; border: 1px solid var(--panel-border); color: var(--muted); }
-  header .btn-ghost:hover, header a.btn-ghost:hover { border-color: var(--orange); color: var(--text); }
-  header a.new-upload:hover { background: #163a47; }
-
-  .kpi-trend { font-size: 11px; font-weight: 700; margin-left: 6px; }
-  .kpi-trend.up { color: var(--green); }
-  .kpi-trend.down { color: var(--red); }
-
-  .ai-panel { background: linear-gradient(135deg, rgba(232,163,61,0.06), rgba(176,127,224,0.06)); border: 1px solid var(--panel-border); border-radius: 10px; padding: 22px; margin-bottom: 16px; }
-  .ai-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 10px; }
-  .ai-panel-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .ai-panel-sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
-  .ai-btn {
-    background: linear-gradient(135deg, var(--orange), #d88a2a); color: #1a1200; border: none;
-    padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-  .ai-btn:hover { filter: brightness(1.08); }
-  .ai-btn:disabled { opacity: 0.6; cursor: default; }
-  .ai-output { margin-top: 16px; font-size: 13.5px; line-height: 1.7; display: none; }
-  .ai-output.visible { display: block; }
-  .ai-output h4 { color: var(--orange); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin: 18px 0 8px; }
-  .ai-output h4:first-child { margin-top: 0; }
-  .ai-output ul { margin: 0 0 4px; padding-left: 20px; }
-  .ai-output li { margin-bottom: 5px; }
-  .ai-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
-  .ai-error.visible { display: block; }
-  .ai-loading { color: var(--muted); font-size: 13px; margin-top: 12px; display: none; }
-  .ai-loading.visible { display: block; }
-
-  @media print {
-    body { background: white; color: #111; }
-    header .header-actions, .ai-panel { display: none !important; }
-    .kpi-card, .panel { border: 1px solid #ccc; background: white; }
-    .panel-title, .kpi-label, .kpi-sub, th { color: #555 !important; }
-  }
-
-  main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
-
-  .top-row { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; }
-  .eyebrow { color: var(--orange); font-size: 12px; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; }
-  h1 { font-size: 28px; margin: 0 0 6px; }
-  .subtitle { color: var(--muted); font-size: 13px; }
-
-  .warnings {
-    background: rgba(232,163,61,0.08); border: 1px solid rgba(232,163,61,0.3);
-    border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: var(--orange);
-  }
-  .warnings ul { margin: 6px 0 0; padding-left: 18px; }
-
-  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-  .kpi-card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px; padding: 18px 20px; border-top: 3px solid var(--orange); }
-  .kpi-card.teal { border-top-color: var(--teal); }
-  .kpi-card.green { border-top-color: var(--green); }
-  .kpi-card.purple { border-top-color: var(--purple); }
-  .kpi-card.blue { border-top-color: var(--blue); }
-  .kpi-card.red { border-top-color: var(--red); }
-  .kpi-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-  .kpi-value { font-size: 25px; font-weight: 700; margin: 8px 0 4px; }
-  .kpi-sub { color: var(--muted); font-size: 12px; }
-
-  .panels { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px; padding: 22px; }
-  .panel-title { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; display: flex; justify-content: space-between; }
-  .empty { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
-
-  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-  .tab-btn { background: #17233a; color: var(--muted); border: none; padding: 8px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-  .tab-btn.active { background: var(--navy); color: white; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 10px 12px; border-bottom: 1px solid var(--panel-border); text-align: left; }
-  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  td.num, th.num { text-align: right; }
-  .pill { padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-  .pill.good { background: rgba(63,191,127,0.15); color: var(--green); }
-  .pill.warn { background: rgba(232,163,61,0.15); color: var(--orange); }
-  .pill.bad { background: rgba(224,90,78,0.15); color: var(--red); }
-
-  canvas { max-width: 100%; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#160b36">
+  <title>MIS Intelligence Studio — {{ filename }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/chart-fallback.js') }}"></script>
 </head>
 <body>
-<header>
-  <div class="brand">MIS <span>DASHBOARD</span></div>
-  <div class="header-actions">
-    <button class="btn-ghost" onclick="window.print()">🖨 Print / Save PDF</button>
-    <a class="btn-ghost" href="{{ url_for('download_xlsx') }}">⬇ Download Excel Report</a>
-    <a class="new-upload" href="{{ url_for('upload_page') }}">↑ Upload a different file</a>
-  </div>
-</header>
-
-<main>
-  <div class="top-row">
-    <div>
-      <div class="eyebrow">MANAGEMENT INFORMATION SYSTEM</div>
-      <h1>Sales, Inventory &amp; P&amp;L Dashboard</h1>
-      <div class="subtitle">{{ filename }} · {{ row_count }} rows · {{ data.kpi.sku_count }} products · assumed tax rate {{ tax_rate }}%</div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">📈</div>
+      <div>
+        <div class="brand-title">MIS Intelligence Studio</div>
+        <div class="brand-sub">Business MIS + AI Analytics</div>
+      </div>
     </div>
-  </div>
 
-  {% if warnings %}
-  <div class="warnings">
-    <strong>Heads up — some data was auto-filled:</strong>
-    <ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>
-  </div>
-  {% endif %}
+    <nav class="nav" aria-label="Dashboard navigation">
+      <button class="nav-item active" data-section="dashboard"><span class="nav-icon">⌂</span>Dashboard</button>
+      <button class="nav-item" data-section="upload"><span class="nav-icon">☁</span>Upload Center</button>
+      <button class="nav-item" data-section="mis"><span class="nav-icon">▥</span>MIS Analysis</button>
+      <button class="nav-item" data-section="quality"><span class="nav-icon">♢</span>Data Quality</button>
+      <button class="nav-item" data-section="cleaning"><span class="nav-icon">⌁</span>Data Cleaning</button>
+      <button class="nav-item" data-section="charts"><span class="nav-icon">◔</span>Chart Builder</button>
+      <button class="nav-item" data-section="insights"><span class="nav-icon">✣</span>AI Insights</button>
+      <button class="nav-item" data-section="chat"><span class="nav-icon">▣</span>AI Chat</button>
+      <button class="nav-item" data-section="reports"><span class="nav-icon">▤</span>Reports</button>
+      <button class="nav-item" data-section="admin"><span class="nav-icon">⚙</span>Admin <span class="nav-badge">Phase 2</span></button>
+    </nav>
 
-  <div class="ai-panel">
-    <div class="ai-panel-header">
-      <div class="ai-panel-title">✨ AI Insights</div>
-      <button class="ai-btn" id="aiBtn" onclick="generateInsights()">Generate Insights</button>
+    <div class="sidebar-spacer"></div>
+    <div class="source-card">
+      <div class="source-title">🗄 Active Data Source</div>
+      <div class="source-file">{{ filename }}</div>
+      <div class="source-meta">
+        {{ quality.rows|int }} rows · {{ quality.columns }} columns<br>
+        Uploaded {{ uploaded_at.replace('T', ' ') if uploaded_at else 'this session' }}
+      </div>
+      <button class="source-link" data-section="upload">Upload another file →</button>
     </div>
-    <div class="ai-panel-sub">KPIs to watch, where output could improve, and where to focus investment — generated from the numbers on this dashboard.</div>
-    <div class="ai-loading" id="aiLoading">Analyzing your data…</div>
-    <div class="ai-error" id="aiError"></div>
-    <div class="ai-output" id="aiOutput"></div>
-  </div>
+    <div class="sidebar-footer">MIS Intelligence Studio · Vibrant Gradient</div>
+  </aside>
 
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-label">Net Sales</div>
-      <div class="kpi-value">₹{{ "{:,.0f}".format(data.kpi.net_sales) }}
-        {% if data.momentum.net_sales_growth_pct is not none %}
-        <span class="kpi-trend {% if data.momentum.net_sales_growth_pct >= 0 %}up{% else %}down{% endif %}">
-          {% if data.momentum.net_sales_growth_pct >= 0 %}▲{% else %}▼{% endif %} {{ data.momentum.net_sales_growth_pct|abs }}%
-        </span>
+  <div class="app-main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button>
+        <div class="topbar-title">
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Management overview for {{ filename }}</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="top-pill hide-mobile">📅 {{ date_label }}</div>
+        <a class="top-pill hide-mobile" href="{{ url_for('download_xlsx') }}" style="text-decoration:none;">⇩ Excel Report</a>
+        <div class="avatar">RM</div>
+        <div class="user-copy"><strong>Welcome, Admin</strong><span>Administrator</span></div>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="content">
+      <section class="page-section active" id="section-dashboard">
+        {% if warnings %}
+        <div class="warning-box"><strong>Data mapping notes</strong><ul>{% for warning in warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>
         {% endif %}
-      </div>
-      <div class="kpi-sub">
-        {{ "{:,.0f}".format(data.kpi.units_sold) }} units sold
-        {% if data.momentum.has_momentum %} · vs {{ data.momentum.prev_month }}{% endif %}
-      </div>
-    </div>
-    <div class="kpi-card teal">
-      <div class="kpi-label">Gross Profit</div>
-      <div class="kpi-value">₹{{ "{:,.0f}".format(data.kpi.gross_profit) }}</div>
-      <div class="kpi-sub">GP Margin {{ data.kpi.gp_margin }}%</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-label">EBITDA</div>
-      <div class="kpi-value">₹{{ "{:,.0f}".format(data.kpi.ebitda) }}</div>
-      <div class="kpi-sub">Margin {{ data.kpi.ebitda_margin }}%</div>
-    </div>
-    <div class="kpi-card purple">
-      <div class="kpi-label">Net Profit</div>
-      <div class="kpi-value">₹{{ "{:,.0f}".format(data.kpi.net_profit) }}</div>
-      <div class="kpi-sub">NP Margin {{ data.kpi.np_margin }}%</div>
-    </div>
+
+        <div class="kpi-grid">
+          <article class="card kpi-card pink">
+            <div class="kpi-icon-row"><div class="kpi-icon">₹</div><div class="kpi-label">Gross Sales</div></div>
+            <div class="kpi-value">{{ data.pnl.gross_sales|compact_currency }}</div>
+            <div class="kpi-foot"><span class="good">●</span><span>Uploaded reporting period</span></div>
+          </article>
+          <article class="card kpi-card blue">
+            <div class="kpi-icon-row"><div class="kpi-icon">🛒</div><div class="kpi-label">Net Sales</div></div>
+            <div class="kpi-value">{{ data.kpi.net_sales|compact_currency }}</div>
+            <div class="kpi-foot">
+              {% if data.momentum.net_sales_growth_pct is not none %}
+                <span class="{% if data.momentum.net_sales_growth_pct >= 0 %}good{% else %}bad{% endif %}">{{ '%+.1f'|format(data.momentum.net_sales_growth_pct) }}%</span><span>vs previous month</span>
+              {% else %}<span>Current dataset total</span>{% endif %}
+            </div>
+          </article>
+          <article class="card kpi-card purple">
+            <div class="kpi-icon-row"><div class="kpi-icon">▥</div><div class="kpi-label">EBITDA</div></div>
+            <div class="kpi-value">{{ data.kpi.ebitda|compact_currency }}</div>
+            <div class="kpi-foot"><span class="good">{{ data.kpi.ebitda_margin }}%</span><span>EBITDA margin</span></div>
+          </article>
+          <article class="card kpi-card green">
+            <div class="kpi-icon-row"><div class="kpi-icon">▰</div><div class="kpi-label">Net Profit</div></div>
+            <div class="kpi-value">{{ data.kpi.net_profit|compact_currency }}</div>
+            <div class="kpi-foot"><span class="good">{{ data.kpi.np_margin }}%</span><span>net-profit margin</span></div>
+          </article>
+          <article class="card kpi-card orange">
+            <div class="kpi-icon-row"><div class="kpi-icon">⬡</div><div class="kpi-label">Inventory Value</div></div>
+            <div class="kpi-value">{% if data.kpi.has_stock %}{{ data.kpi.inventory_value|compact_currency }}{% else %}—{% endif %}</div>
+            <div class="kpi-foot"><span class="warn">{{ data.kpi.stock_alerts_count }}</span><span>stock alerts</span></div>
+          </article>
+          <article class="card kpi-card blue">
+            <div class="kpi-icon-row"><div class="kpi-icon">◇</div><div class="kpi-label">Units Sold</div></div>
+            <div class="kpi-value">{{ data.kpi.units_sold|compact_number }}</div>
+            <div class="kpi-foot"><span class="good">{{ data.kpi.sell_through_pct }}%</span><span>sell-through</span></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">Sales & Profit Trend</div><div class="card-sub">Net sales, gross profit, EBITDA and net profit</div></div><div class="card-sub">Monthly</div></div>
+            <div class="chart-wrap"><canvas id="salesTrendChart"></canvas></div>
+          </article>
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">Top Categories by Net Sales</div><div class="card-sub">Leading business segments</div></div><button class="secondary-btn" data-section="mis">View all</button></div>
+            <div class="bar-list">
+              {% set max_sales = data.category_performance[0].net_sales if data.category_performance else 1 %}
+              {% for category in data.category_performance[:8] %}
+              <div class="bar-row"><span>{{ category.category }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ (category.net_sales / max_sales * 100) if max_sales else 0 }}%"></div></div><span class="bar-value">{{ category.net_sales|compact_currency }}</span></div>
+              {% else %}<div class="empty-state">No category data available.</div>{% endfor %}
+            </div>
+          </article>
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">Category Contribution</div><div class="card-sub">Share of total net sales</div></div></div>
+            <div class="chart-wrap sm"><canvas id="categoryMixChart"></canvas></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid lower">
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">♢ Data Quality Overview</div><div class="card-sub">Current active dataset</div></div></div>
+            <div class="metric-list">
+              <div class="metric-row"><span>Rows</span><strong>{{ '{:,}'.format(quality.rows) }}</strong></div>
+              <div class="metric-row"><span>Columns</span><strong>{{ quality.columns }}</strong></div>
+              <div class="metric-row"><span>Missing Values</span><strong class="warn">{{ '{:,}'.format(quality.missing) }} ({{ quality.missing_pct }}%)</strong></div>
+              <div class="metric-row"><span>Duplicate Rows</span><strong class="bad">{{ '{:,}'.format(quality.duplicates) }} ({{ quality.duplicate_pct }}%)</strong></div>
+            </div>
+            <div class="quality-score"><span>⭐ {{ quality.score }}/100</span><div class="score-track"><div class="score-fill" style="width:{{ quality.score }}%"></div></div></div>
+          </article>
+
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">⌁ Data Cleaning Center</div><div class="card-sub">Apply changes to the active dataset</div></div></div>
+            <div class="action-list">
+              <form method="post" action="{{ url_for('clean_data') }}"><input type="hidden" name="action" value="remove_duplicates"><button class="action-button"><span class="action-icon">▣</span><span><strong>Remove Duplicates</strong><small>Remove repeated rows</small></span><span class="action-arrow">›</span></button></form>
+              <form method="post" action="{{ url_for('clean_data') }}"><input type="hidden" name="action" value="fill_median"><button class="action-button"><span class="action-icon">✦</span><span><strong>Fill Numeric Missing Values</strong><small>Use the median for stability</small></span><span class="action-arrow">›</span></button></form>
+              <button class="action-button" data-section="cleaning"><span class="action-icon">⇩</span><span><strong>More Cleaning Options</strong><small>Mode, mean, drop rows and reset</small></span><span class="action-arrow">›</span></button>
+            </div>
+          </article>
+
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">☁ Upload Center</div><div class="card-sub">CSV, Excel, PDF or Word</div></div></div>
+            <form method="post" action="{{ url_for('dashboard') }}" enctype="multipart/form-data" class="mini-upload-form">
+              <label class="upload-box upload-label" for="quickFile"><div><div style="font-size:28px;">📊</div><div class="upload-title">Drag and drop or browse</div><div class="upload-sub">Supports .csv, .xlsx, .xls, .pdf and .docx</div><div class="file-name" data-file-name></div></div></label>
+              <input type="file" id="quickFile" name="file" accept=".csv,.xlsx,.xls,.pdf,.docx" required style="display:none;">
+              <input type="hidden" name="tax_rate" value="{{ tax_rate }}">
+              <button class="primary-btn block-btn" type="submit" style="margin-top:9px;">Upload and Analyse</button>
+            </form>
+          </article>
+
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">✣ AI Insights</div><div class="card-sub">Calculated business signals with Gemini fallback</div></div><button class="secondary-btn" data-section="insights">Open</button></div>
+            <div class="ai-list">
+              {% if data.category_performance %}<div class="ai-item"><span class="ai-dot">↗</span><span>{{ data.category_performance[0].category }} leads category sales with {{ data.category_performance[0].share_pct }}% contribution.</span></div>{% endif %}
+              {% if data.kpi.stock_alerts_count %}<div class="ai-item"><span class="ai-dot risk">!</span><span>{{ data.kpi.stock_alerts_count }} products are at or below the reorder level.</span></div>{% endif %}
+              <div class="ai-item"><span class="ai-dot purple">✦</span><span>Net-profit margin is {{ data.kpi.np_margin }}%; data-quality score is {{ quality.score }}/100.</span></div>
+            </div>
+            <button class="primary-btn block-btn" id="quickInsightsBtn" style="margin-top:12px;">Generate Management Summary</button>
+          </article>
+
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">▣ AI Chat</div><div class="card-sub">Ask calculated questions about your data</div></div><button class="secondary-btn" data-section="chat">Open</button></div>
+            <div class="chat-suggestions">
+              <button class="suggestion quick-question">Which product has highest net sales?</button>
+              <button class="suggestion quick-question">What is the EBITDA margin?</button>
+              <button class="suggestion quick-question">Show top 5 products</button>
+              <button class="suggestion quick-question">How many missing values are there?</button>
+            </div>
+          </article>
+        </div>
+
+        <article class="card card-pad">
+          <div class="card-head"><div><div class="card-title">Reports & Export</div><div class="card-sub">Download dashboard results and cleaned data</div></div><button class="secondary-btn" data-section="reports">View all exports</button></div>
+          <div class="report-grid">
+            <div class="card report-card"><div class="report-icon">📕</div><div><h3>PDF Report</h3><p>Management-ready dashboard, quality and insights report.</p><a class="secondary-btn" href="{{ url_for('download_pdf') }}">Export PDF</a></div></div>
+            <div class="card report-card"><div class="report-icon">📗</div><div><h3>Excel Report</h3><p>KPI summary, P&L, products, categories and inventory.</p><a class="secondary-btn" href="{{ url_for('download_xlsx') }}">Export Excel</a></div></div>
+            <div class="card report-card"><div class="report-icon">📘</div><div><h3>Cleaned CSV</h3><p>Download the current dataset after cleaning changes.</p><a class="secondary-btn" href="{{ url_for('download_cleaned_csv') }}">Export CSV</a></div></div>
+            <div class="card report-card"><div class="report-icon">📙</div><div><h3>Cleaned Excel</h3><p>Export active cleaned records to an Excel workbook.</p><a class="secondary-btn" href="{{ url_for('download_cleaned_xlsx') }}">Export XLSX</a></div></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="page-section" id="section-upload">
+        <div class="section-heading"><div><h2>Upload Center</h2><p>Replace the active dataset and regenerate all MIS, quality and AI modules.</p></div></div>
+        <div class="grid-2">
+          <article class="card card-pad">
+            <form method="post" action="{{ url_for('dashboard') }}" enctype="multipart/form-data">
+              <label class="upload-box upload-label" for="mainFile"><div><div style="font-size:45px;">☁</div><div class="upload-title">Choose or drag a business dataset</div><div class="upload-sub">Excel, CSV, PDF table or Word table · Up to 50 MB</div><div class="file-name" data-file-name></div></div></label>
+              <input type="file" id="mainFile" name="file" accept=".csv,.xlsx,.xls,.pdf,.docx" required style="display:none;">
+              <div class="field" style="margin-top:14px;"><label for="taxRate">Tax rate used for calculated net profit</label><input id="taxRate" type="number" name="tax_rate" min="0" max="100" value="{{ tax_rate }}"></div>
+              <button class="primary-btn block-btn" type="submit" style="margin-top:14px;">Upload and Generate Dashboard</button>
+            </form>
+          </article>
+          <article class="card card-pad">
+            <div class="card-head"><div><div class="card-title">Recommended MIS Columns</div><div class="card-sub">Column names are matched case-insensitively</div></div></div>
+            <div class="metric-list">
+              <div class="metric-row"><span>Sales</span><strong>net_sales or unit_price</strong></div>
+              <div class="metric-row"><span>Volume</span><strong>units_sold / quantity</strong></div>
+              <div class="metric-row"><span>Profit</span><strong>cogs / unit_cost and opex</strong></div>
+              <div class="metric-row"><span>Grouping</span><strong>product and category</strong></div>
+              <div class="metric-row"><span>Inventory</span><strong>stock_qty and reorder_level</strong></div>
+              <div class="metric-row"><span>Trend</span><strong>date / month / period</strong></div>
+            </div>
+            <p class="status-line">For workbooks with multiple non-empty sheets, the system currently analyses the largest worksheet and shows a mapping note.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="page-section" id="section-mis">
+        <div class="section-heading"><div><h2>MIS Analysis</h2><p>Sales, profit, inventory, products and category performance.</p></div></div>
+        <div class="grid-2">
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">P&L Snapshot</div><div class="card-sub">Calculated from mapped source columns</div></div></div><div class="chart-wrap lg"><canvas id="pnlChart"></canvas></div></article>
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Inventory Position</div><div class="card-sub">Availability and reorder risk</div></div></div>
+            <div class="metric-list">
+              <div class="metric-row"><span>Estimated Inventory Value</span><strong>{{ data.kpi.inventory_value|compact_currency if data.kpi.has_stock else 'Not available' }}</strong></div>
+              <div class="metric-row"><span>Sell-Through Rate</span><strong>{{ data.kpi.sell_through_pct }}%</strong></div>
+              <div class="metric-row"><span>Products Tracked</span><strong>{{ data.kpi.sku_count }}</strong></div>
+              <div class="metric-row"><span>Reorder Alerts</span><strong class="warn">{{ data.kpi.stock_alerts_count }}</strong></div>
+            </div>
+            <div class="chart-wrap sm" style="margin-top:12px;"><canvas id="inventoryChart"></canvas></div>
+          </article>
+        </div>
+        <article class="card card-pad" style="margin-top:12px;"><div class="card-head"><div><div class="card-title">Top Product Performance</div><div class="card-sub">Sales, profit and margin</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th class="num">Units</th><th class="num">Net Sales</th><th class="num">Gross Profit</th><th class="num">Net Profit</th><th class="num">NP Margin</th></tr></thead><tbody>
+          {% for p in data.top_products %}<tr><td>{{ p.product }}</td><td>{{ p.category }}</td><td class="num">{{ '{:,.0f}'.format(p.units_sold) }}</td><td class="num">{{ p.net_sales|compact_currency }}</td><td class="num">{{ p.gross_profit|compact_currency }}</td><td class="num">{{ p.net_profit|compact_currency }}</td><td class="num"><span class="pill {% if p.np_margin >= 10 %}good{% elif p.np_margin >= 0 %}warn{% else %}bad{% endif %}">{{ p.np_margin }}%</span></td></tr>{% else %}<tr><td colspan="7">No product data.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </article>
+        <article class="card card-pad" style="margin-top:12px;"><div class="card-head"><div><div class="card-title">Category Performance</div><div class="card-sub">Contribution and profitability</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Category</th><th class="num">Net Sales</th><th class="num">Gross Profit</th><th class="num">GP Margin</th><th class="num">Share</th><th class="num">Units</th></tr></thead><tbody>
+          {% for c in data.category_performance %}<tr><td>{{ c.category }}</td><td class="num">{{ c.net_sales|compact_currency }}</td><td class="num">{{ c.gross_profit|compact_currency }}</td><td class="num">{{ c.gp_margin }}%</td><td class="num">{{ c.share_pct }}%</td><td class="num">{{ '{:,.0f}'.format(c.units_sold) }}</td></tr>{% endfor %}
+          </tbody></table></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="section-quality">
+        <div class="section-heading"><div><h2>Data Quality</h2><p>Structure, completeness, duplicates, data types and statistical checks.</p></div><div class="pill">Score {{ quality.score }}/100</div></div>
+        <div class="kpi-grid">
+          <article class="card kpi-card blue"><div class="kpi-label">Rows</div><div class="kpi-value">{{ quality.rows|compact_number }}</div><div class="kpi-foot">Records analysed</div></article>
+          <article class="card kpi-card purple"><div class="kpi-label">Columns</div><div class="kpi-value">{{ quality.columns }}</div><div class="kpi-foot">Available fields</div></article>
+          <article class="card kpi-card orange"><div class="kpi-label">Missing Values</div><div class="kpi-value">{{ quality.missing|compact_number }}</div><div class="kpi-foot">{{ quality.missing_pct }}% of cells</div></article>
+          <article class="card kpi-card pink"><div class="kpi-label">Duplicates</div><div class="kpi-value">{{ quality.duplicates|compact_number }}</div><div class="kpi-foot">{{ quality.duplicate_pct }}% of rows</div></article>
+          <article class="card kpi-card green"><div class="kpi-label">Numeric Columns</div><div class="kpi-value">{{ quality.numeric }}</div><div class="kpi-foot">Ready for statistics</div></article>
+          <article class="card kpi-card purple"><div class="kpi-label">Quality Score</div><div class="kpi-value">{{ quality.score }}</div><div class="kpi-foot">Out of 100</div></article>
+        </div>
+        <div class="grid-2">
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Missing Values by Column</div><div class="card-sub">Only columns containing missing values</div></div></div><div class="chart-wrap lg"><canvas id="missingChart"></canvas></div></article>
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Correlation Matrix</div><div class="card-sub">First eight numeric columns</div></div></div><div id="correlationGrid" class="correlation"></div></article>
+        </div>
+        <article class="card card-pad" style="margin-top:12px;"><div class="card-head"><div><div class="card-title">Column Quality Profile</div><div class="card-sub">Data type, missing percentage and uniqueness</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Column</th><th>Data Type</th><th class="num">Missing</th><th class="num">Missing %</th><th class="num">Unique Values</th></tr></thead><tbody>
+            {% for col in quality.column_quality %}<tr><td>{{ col.column }}</td><td>{{ col.dtype }}</td><td class="num">{{ col.missing }}</td><td class="num">{{ col.missing_pct }}%</td><td class="num">{{ col.unique }}</td></tr>{% endfor %}
+          </tbody></table></div>
+        </article>
+        <article class="card card-pad" style="margin-top:12px;"><div class="card-head"><div><div class="card-title">Numeric Statistical Summary</div><div class="card-sub">Count, mean, range and standard deviation</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Column</th><th class="num">Count</th><th class="num">Mean</th><th class="num">Min</th><th class="num">Max</th><th class="num">Std. Dev.</th></tr></thead><tbody>
+            {% for row in quality.numeric_summary %}<tr><td>{{ row.column }}</td><td class="num">{{ row.count }}</td><td class="num">{{ row.mean }}</td><td class="num">{{ row.min }}</td><td class="num">{{ row.max }}</td><td class="num">{{ row.std if row.std is not none else '—' }}</td></tr>{% else %}<tr><td colspan="6">No numeric columns available.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="section-cleaning">
+        <div class="section-heading"><div><h2>Data Cleaning</h2><p>Apply reversible cleaning operations before reporting and export.</p></div><a class="secondary-btn" href="{{ url_for('download_cleaned_xlsx') }}">Download Active Data</a></div>
+        <div class="grid-3">
+          {% set clean_actions = [
+            ('remove_duplicates','▣','Remove Duplicates','Delete repeated rows from the active dataset.'),
+            ('fill_mean','∑','Fill Numeric with Mean','Replace numeric blanks using each column average.'),
+            ('fill_median','◇','Fill Numeric with Median','Use a robust central value for numeric blanks.'),
+            ('fill_mode','✦','Fill Missing with Mode','Use the most common value in each column.'),
+            ('drop_missing','⌫','Drop Incomplete Rows','Remove every row containing at least one blank.'),
+            ('standardize_text','≡','Standardise Text','Trim leading and trailing spaces in text fields.')
+          ] %}
+          {% for action, icon, title, description in clean_actions %}
+          <article class="card card-pad"><div class="card-head"><span class="action-icon">{{ icon }}</span><div class="pill">Action</div></div><h3 style="font-size:13px;margin:2px 0 5px;">{{ title }}</h3><p class="card-sub" style="min-height:35px;line-height:1.6;">{{ description }}</p><form method="post" action="{{ url_for('clean_data') }}"><input type="hidden" name="action" value="{{ action }}"><button class="primary-btn block-btn" type="submit">Apply</button></form></article>
+          {% endfor %}
+        </div>
+        <div class="grid-2" style="margin-top:12px;">
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Cleaning History</div><div class="card-sub">Operations applied in this browser session</div></div></div><div class="clean-log">
+            {% for log in cleaning_log|reverse %}<div class="log-item"><span class="log-time">{{ log.time }}</span><span><strong>{{ log.action }}</strong><br><span class="card-sub">{{ log.message }}</span></span></div>{% else %}<div class="empty-state">No cleaning operation has been applied.</div>{% endfor %}
+          </div></article>
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Reset Dataset</div><div class="card-sub">Restore the original uploaded rows and values</div></div></div><p class="card-sub" style="line-height:1.7;">Resetting removes all active cleaning changes, but it does not delete the uploaded session.</p><form method="post" action="{{ url_for('clean_data') }}"><input type="hidden" name="action" value="reset"><button class="danger-btn block-btn" type="submit">Reset to Original Upload</button></form></article>
+        </div>
+        <article class="card card-pad" style="margin-top:12px;"><div class="card-head"><div><div class="card-title">Active Data Preview</div><div class="card-sub">First ten rows after current cleaning operations</div></div></div><div class="table-wrap"><table><thead><tr>{% for col in preview_columns %}<th>{{ col }}</th>{% endfor %}</tr></thead><tbody>{% for row in preview_rows %}<tr>{% for col in preview_columns %}<td>{{ row.get(col, '') }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></article>
+      </section>
+
+      <section class="page-section" id="section-charts">
+        <div class="section-heading"><div><h2>Chart Builder</h2><p>Create a custom visual from any active dataset column.</p></div></div>
+        <article class="card card-pad">
+          <form id="chartBuilderForm" class="form-grid">
+            <div class="field"><label for="chartType">Chart type</label><select id="chartType"><option value="bar">Bar</option><option value="line">Line</option><option value="doughnut">Doughnut</option><option value="pie">Pie</option></select></div>
+            <div class="field"><label for="chartX">Group / X-axis</label><select id="chartX">{% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="chartY">Numeric value / Y-axis</label><select id="chartY"><option value="">Record count</option>{% for col in numeric_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="chartAgg">Aggregation</label><select id="chartAgg"><option value="sum">Sum</option><option value="mean">Mean</option><option value="count">Count</option><option value="max">Maximum</option><option value="min">Minimum</option></select></div>
+          </form>
+          <button class="primary-btn" id="buildChartBtn" style="margin-top:12px;">Build Chart</button>
+          <div class="status-line" id="chartBuilderStatus"></div>
+          <div class="chart-wrap lg" style="margin-top:14px;"><canvas id="customChart"></canvas></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="section-insights">
+        <div class="section-heading"><div><h2>AI Insights</h2><p>Calculated KPIs are sent to Gemini when configured. A local analytical fallback always remains available.</p></div><div class="pill">{% if has_api_key %}Gemini configured · {{ gemini_model }}{% else %}Local fallback active{% endif %}</div></div>
+        <div class="grid-2">
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Management Executive Summary</div><div class="card-sub">Sales, margin, inventory and data-quality findings</div></div></div><button class="primary-btn" id="generateInsightsBtn">Generate Insights</button><div class="status-line" id="insightsStatus"></div><div class="ai-output" id="insightsOutput">{{ last_insights or 'Select Generate Insights to analyse the current dataset.' }}</div></article>
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Calculated Signals</div><div class="card-sub">Available without an AI API key</div></div></div>
+            <div class="metric-list">
+              <div class="metric-row"><span>Leading Product</span><strong>{{ data.top_products[0].product if data.top_products else 'Not available' }}</strong></div>
+              <div class="metric-row"><span>Leading Category</span><strong>{{ data.category_performance[0].category if data.category_performance else 'Not available' }}</strong></div>
+              <div class="metric-row"><span>Gross-Profit Margin</span><strong>{{ data.kpi.gp_margin }}%</strong></div>
+              <div class="metric-row"><span>EBITDA Margin</span><strong>{{ data.kpi.ebitda_margin }}%</strong></div>
+              <div class="metric-row"><span>Net-Profit Margin</span><strong>{{ data.kpi.np_margin }}%</strong></div>
+              <div class="metric-row"><span>Data-Quality Score</span><strong>{{ quality.score }}/100</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page-section" id="section-chat">
+        <div class="section-heading"><div><h2>AI Dataset Chat</h2><p>Common questions use exact Pandas calculations. Gemini handles broader questions when configured.</p></div></div>
+        <div class="grid-2">
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Conversation</div><div class="card-sub">Answers are based on the active cleaned dataset</div></div></div><div class="chat-log" id="chatLog"><div class="chat-message assistant">Ask about sales, products, categories, margins, inventory, duplicates, missing values or data quality.</div></div><div class="chat-input-row"><input id="chatInput" maxlength="1000" placeholder="Ask anything about your data..."><button class="primary-btn" id="sendChatBtn">Send</button></div><div class="status-line" id="chatStatus"></div></article>
+          <article class="card card-pad"><div class="card-head"><div><div class="card-title">Suggested Questions</div><div class="card-sub">Click a question to run it</div></div></div><div class="chat-suggestions">
+            <button class="suggestion chat-question">Which product has highest net sales?</button>
+            <button class="suggestion chat-question">Show top 5 products</button>
+            <button class="suggestion chat-question">Which category performs best?</button>
+            <button class="suggestion chat-question">What is total net sales?</button>
+            <button class="suggestion chat-question">What is the EBITDA margin?</button>
+            <button class="suggestion chat-question">What is the inventory value?</button>
+            <button class="suggestion chat-question">How many duplicate rows are there?</button>
+            <button class="suggestion chat-question">What is the data quality score?</button>
+          </div></article>
+        </div>
+      </section>
+
+      <section class="page-section" id="section-reports">
+        <div class="section-heading"><div><h2>Reports & Exports</h2><p>Download management reports and the active cleaned dataset.</p></div></div>
+        <div class="report-grid">
+          <article class="card report-card"><div class="report-icon">📕</div><div><h3>Management PDF</h3><p>KPIs, data quality, top products, categories and management insights.</p><a class="primary-btn" href="{{ url_for('download_pdf') }}">Download PDF</a></div></article>
+          <article class="card report-card"><div class="report-icon">📗</div><div><h3>MIS Excel Report</h3><p>Summary, P&L, product, category, trend and inventory worksheets.</p><a class="primary-btn" href="{{ url_for('download_xlsx') }}">Download Excel</a></div></article>
+          <article class="card report-card"><div class="report-icon">📘</div><div><h3>Cleaned CSV Data</h3><p>UTF-8 CSV export of the currently active cleaned dataset.</p><a class="primary-btn" href="{{ url_for('download_cleaned_csv') }}">Download CSV</a></div></article>
+          <article class="card report-card"><div class="report-icon">📙</div><div><h3>Cleaned Excel Data</h3><p>Excel workbook containing the currently active cleaned dataset.</p><a class="primary-btn" href="{{ url_for('download_cleaned_xlsx') }}">Download XLSX</a></div></article>
+        </div>
+      </section>
+
+      <section class="page-section" id="section-admin">
+        <div class="section-heading"><div><h2>Administration</h2><p>User accounts, saved reports, KPI settings and database history are planned for Phase 2.</p></div></div>
+        <article class="card card-pad"><div class="empty-state"><div style="font-size:44px;margin-bottom:10px;">⚙</div><strong>Phase 2 module</strong><p>Authentication, MySQL history, saved dashboard configurations, role permissions, target values and scheduled reports will be added after the current dashboard is deployed and validated.</p></div></article>
+      </section>
+    </main>
   </div>
-
-  <div class="kpi-grid">
-    <div class="kpi-card blue">
-      <div class="kpi-label">Units Sold</div>
-      <div class="kpi-value">{{ "{:,.0f}".format(data.kpi.units_sold) }}</div>
-      <div class="kpi-sub">across {{ data.kpi.sku_count }} products</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-label">Inventory Value</div>
-      <div class="kpi-value">{% if data.kpi.has_stock %}₹{{ "{:,.0f}".format(data.kpi.inventory_value) }}{% else %}—{% endif %}</div>
-      <div class="kpi-sub">{% if data.kpi.has_stock %}at estimated unit cost{% else %}no stock data uploaded{% endif %}</div>
-    </div>
-    <div class="kpi-card teal">
-      <div class="kpi-label">Sell-Through Rate</div>
-      <div class="kpi-value">{% if data.kpi.has_stock %}{{ data.kpi.sell_through_pct }}%{% else %}—{% endif %}</div>
-      <div class="kpi-sub">sold vs. sold+on-hand</div>
-    </div>
-    <div class="kpi-card red">
-      <div class="kpi-label">Stock Alerts</div>
-      <div class="kpi-value">{{ data.kpi.stock_alerts_count }}</div>
-      <div class="kpi-sub">at or below reorder level</div>
-    </div>
-  </div>
-
-  <div class="panels">
-    <div class="panel">
-      <div class="panel-title"><span>Monthly Performance Trend</span><span>Net Sales · GP · EBITDA · Net Profit</span></div>
-      {% if data.trend.labels %}
-      <canvas id="trendChart" height="110"></canvas>
-      {% else %}
-      <div class="empty">No usable date column found — add a 'date' column to your data to see a monthly trend.</div>
-      {% endif %}
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span>Category Mix — Net Sales</span></div>
-      {% if data.mix_labels %}
-      <canvas id="mixChart" height="200"></canvas>
-      {% else %}
-      <div class="empty">No sales data to break down.</div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title"><span>P&amp;L Snapshot</span></div>
-    <canvas id="pnlChart" height="90"></canvas>
-    <div style="color:var(--muted); font-size:11.5px; margin-top:10px;">
-      Note: Gross Sales is assumed equal to Net Sales (no returns/discount data), and EBIT/PBT are assumed equal to EBITDA (no depreciation or interest data in a generic upload). Net Profit applies the {{ tax_rate }}% tax rate you set.
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showTab('products')">Top Products</button>
-      <button class="tab-btn" onclick="showTab('categories')">Category Performance</button>
-      <button class="tab-btn" onclick="showTab('alerts')">Inventory Alerts ({{ data.kpi.stock_alerts_count }})</button>
-    </div>
-
-    <div class="tab-panel active" id="tab-products">
-      {% if data.top_products %}
-      <table>
-        <tr><th>Product</th><th>Category</th><th class="num">Units Sold</th><th class="num">Net Sales</th><th class="num">Gross Profit</th><th class="num">Net Profit</th><th class="num">NP Margin</th></tr>
-        {% for p in data.top_products %}
-        <tr>
-          <td>{{ p.product }}</td>
-          <td>{{ p.category }}</td>
-          <td class="num">{{ "{:,.0f}".format(p.units_sold) }}</td>
-          <td class="num">₹{{ "{:,.0f}".format(p.net_sales) }}</td>
-          <td class="num">₹{{ "{:,.0f}".format(p.gross_profit) }}</td>
-          <td class="num">₹{{ "{:,.0f}".format(p.net_profit) }}</td>
-          <td class="num">
-            <span class="pill {% if p.np_margin >= 10 %}good{% elif p.np_margin >= 0 %}warn{% else %}bad{% endif %}">{{ p.np_margin }}%</span>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-      {% else %}
-      <div class="empty">No product-level data found.</div>
-      {% endif %}
-    </div>
-
-    <div class="tab-panel" id="tab-categories">
-      {% if data.category_performance %}
-      <table>
-        <tr><th>Category</th><th class="num">Net Sales</th><th class="num">Gross Profit</th><th class="num">GP Margin</th><th class="num">Share of Sales</th><th class="num">Units Sold</th></tr>
-        {% for c in data.category_performance %}
-        <tr>
-          <td>{{ c.category }}</td>
-          <td class="num">₹{{ "{:,.0f}".format(c.net_sales) }}</td>
-          <td class="num">₹{{ "{:,.0f}".format(c.gross_profit) }}</td>
-          <td class="num">
-            <span class="pill {% if c.gp_margin >= 40 %}good{% elif c.gp_margin >= 20 %}warn{% else %}bad{% endif %}">{{ c.gp_margin }}%</span>
-          </td>
-          <td class="num">{{ c.share_pct }}%</td>
-          <td class="num">{{ "{:,.0f}".format(c.units_sold) }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-      {% else %}
-      <div class="empty">No category data found.</div>
-      {% endif %}
-    </div>
-
-    <div class="tab-panel" id="tab-alerts">
-      {% if data.stock_alerts %}
-      <table>
-        <tr><th>Product</th><th>Category</th><th class="num">Stock Qty</th><th class="num">Reorder Level</th><th>Status</th></tr>
-        {% for s in data.stock_alerts %}
-        <tr>
-          <td>{{ s.product }}</td>
-          <td>{{ s.category }}</td>
-          <td class="num">{{ "{:,.0f}".format(s.stock_qty) }}</td>
-          <td class="num">{{ "{:,.0f}".format(s.reorder_level) if s.reorder_level == s.reorder_level else "—" }}</td>
-          <td><span class="pill {% if s.stock_qty <= 0 %}bad{% else %}warn{% endif %}">{% if s.stock_qty <= 0 %}Stockout{% else %}Reorder{% endif %}</span></td>
-        </tr>
-        {% endfor %}
-      </table>
-      {% elif data.kpi.has_stock %}
-      <div class="empty">No products are at or below their reorder level. 🎉</div>
-      {% else %}
-      <div class="empty">Upload a 'stock_qty' (and optionally 'reorder_level') column to see inventory alerts here.</div>
-      {% endif %}
-    </div>
-  </div>
-</main>
+</div>
 
 <script>
-  Chart.defaults.color = '#8a97a8';
-  Chart.defaults.borderColor = '#1e2c42';
-
-  function showTab(which) {
-    ['products', 'categories', 'alerts'].forEach(t => {
-      document.getElementById('tab-' + t).classList.toggle('active', which === t);
-    });
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-  }
-
-  function renderAiText(raw) {
-    // Minimal markdown -> HTML: #### headers and - bullets, nothing fancier needed for this output shape.
-    const lines = raw.split('\n');
-    let html = '';
-    let inList = false;
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#### ')) {
-        if (inList) { html += '</ul>'; inList = false; }
-        html += `<h4>${trimmed.slice(5)}</h4>`;
-      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        if (!inList) { html += '<ul>'; inList = true; }
-        html += `<li>${trimmed.slice(2)}</li>`;
-      } else if (trimmed === '') {
-        // skip
-      } else {
-        if (inList) { html += '</ul>'; inList = false; }
-        html += `<p>${trimmed}</p>`;
-      }
-    }
-    if (inList) html += '</ul>';
-    return html;
-  }
-
-  async function generateInsights() {
-    const btn = document.getElementById('aiBtn');
-    const loading = document.getElementById('aiLoading');
-    const errorBox = document.getElementById('aiError');
-    const output = document.getElementById('aiOutput');
-
-    btn.disabled = true;
-    loading.classList.add('visible');
-    errorBox.classList.remove('visible');
-    output.classList.remove('visible');
-    output.innerHTML = '';
-
-    try {
-      const res = await fetch('{{ url_for("insights") }}', { method: 'POST' });
-      const json = await res.json();
-      if (json.ok) {
-        output.innerHTML = renderAiText(json.text);
-        output.classList.add('visible');
-      } else {
-        errorBox.textContent = json.error || 'Something went wrong generating insights.';
-        errorBox.classList.add('visible');
-      }
-    } catch (e) {
-      errorBox.textContent = 'Could not reach the server: ' + e;
-      errorBox.classList.add('visible');
-    } finally {
-      btn.disabled = false;
-      loading.classList.remove('visible');
-    }
-  }
-
-  {% if data.trend.labels %}
-  new Chart(document.getElementById('trendChart'), {
-    type: 'line',
-    data: {
-      labels: {{ data.trend.labels|tojson }},
-      datasets: [
-        { label: 'Net Sales', data: {{ data.trend.net_sales|tojson }}, borderColor: '#e8a33d', backgroundColor: 'rgba(232,163,61,0.08)', tension: 0.35, fill: true },
-        { label: 'Gross Profit', data: {{ data.trend.gross_profit|tojson }}, borderColor: '#2fb6c4', tension: 0.35, fill: false },
-        { label: 'EBITDA', data: {{ data.trend.ebitda|tojson }}, borderColor: '#3fbf7f', tension: 0.35, fill: false },
-        { label: 'Net Profit', data: {{ data.trend.net_profit|tojson }}, borderColor: '#b07fe0', tension: 0.35, fill: false }
-      ]
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } },
-      scales: { y: { grid: { color: '#1e2c42' } } }
-    }
-  });
-  {% endif %}
-
-  {% if data.mix_labels %}
-  new Chart(document.getElementById('mixChart'), {
-    type: 'doughnut',
-    data: {
-      labels: {{ data.mix_labels|tojson }},
-      datasets: [{ data: {{ data.mix_values|tojson }}, backgroundColor: ['#e8a33d','#2fb6c4','#3fbf7f','#b07fe0','#e05a4e','#5b8def','#6b7c85'], borderColor: '#101a2c', borderWidth: 3 }]
-    },
-    options: { responsive: true, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } } }
-  });
-  {% endif %}
-
-  new Chart(document.getElementById('pnlChart'), {
-    type: 'bar',
-    data: {
-      labels: ['Gross Sales','Net Sales','COGS','Gross Profit','OpEx','EBITDA','EBIT','PBT','Net Profit'],
-      datasets: [{
-        data: [
-          {{ data.pnl.gross_sales }}, {{ data.pnl.net_sales }}, {{ data.pnl.cogs }},
-          {{ data.pnl.gross_profit }}, {{ data.pnl.opex }}, {{ data.pnl.ebitda }},
-          {{ data.pnl.ebit }}, {{ data.pnl.pbt }}, {{ data.pnl.net_profit }}
-        ],
-        backgroundColor: ['#e8a33d','#e8a33d','#e05a4e','#e8a33d','#e05a4e','#e8a33d','#e8a33d','#e8a33d','#e8a33d']
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { grid: { color: '#1e2c42' } } }
-    }
-  });
+window.MIS_DATA = {{ data|tojson }};
+window.QUALITY_DATA = {{ quality|tojson }};
+window.MIS_ENDPOINTS = {
+  insights: {{ url_for('insights')|tojson }},
+  chat: {{ url_for('dataset_chat')|tojson }},
+  chart: {{ url_for('chart_data')|tojson }}
+};
 </script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

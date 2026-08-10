@@ -71,71 +71,100 @@ def extract_docx_table(path):
 
 
 def load_dataframe(path: str, ext: str):
-    """Returns (df, warnings). df always has the full canonical schema, numeric-coerced."""
+    """Read an uploaded file and return a normalized source DataFrame plus warnings.
+
+    Business defaults are added later by ``prepare_business_dataframe`` so the
+    data-quality and cleaning screens can still inspect the original missing
+    values and data types.
+    """
     warnings = []
 
     if ext in ("xlsx", "xls"):
-        raw = pd.read_excel(path)
+        sheets = pd.read_excel(path, sheet_name=None)
+        usable = {name: frame for name, frame in sheets.items() if frame is not None and not frame.empty}
+        if not usable:
+            return None, ["No usable worksheet was found in the workbook."]
+        sheet_name, raw = max(usable.items(), key=lambda item: item[1].shape[0] * max(item[1].shape[1], 1))
+        if len(usable) > 1:
+            warnings.append(
+                f"Workbook contains {len(usable)} non-empty sheets. Using the largest sheet: '{sheet_name}'."
+            )
     elif ext == "csv":
         raw = pd.read_csv(path)
     elif ext == "pdf":
         raw = extract_pdf_table(path)
         if raw.empty:
-            warnings.append("No table detected in the PDF. PDFs work best when they contain a real data table (not a scanned image).")
+            warnings.append("No table detected in the PDF. Use a PDF containing a real table, not a scanned image.")
     elif ext == "docx":
         raw = extract_docx_table(path)
         if raw.empty:
-            warnings.append("No table detected in the Word document. Make sure your data is in an actual Word table.")
+            warnings.append("No table detected in the Word document. Put the data inside a Word table.")
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
     if raw is None or raw.empty:
         return None, warnings
 
-    df = normalize_columns(raw)
+    raw = raw.dropna(how="all").dropna(axis=1, how="all")
+    return normalize_columns(raw), warnings
+
+
+def prepare_business_dataframe(source_df: pd.DataFrame):
+    """Return a dashboard-ready copy and schema warnings.
+
+    The source DataFrame is never mutated. This keeps cleaning reversible and
+    allows quality metrics to describe the actual uploaded file.
+    """
+    df = normalize_columns(source_df.copy())
+    warnings = []
 
     if "product" not in df.columns:
         df["product"] = [f"Item {i+1}" for i in range(len(df))]
-        warnings.append("No 'product' column found — using generic item labels.")
+        warnings.append("No product column found. Generic item labels are being used.")
     if "category" not in df.columns:
         df["category"] = "Uncategorized"
-        warnings.append("No 'category' column found — grouping everything as 'Uncategorized'.")
+        warnings.append("No category column found. All rows are grouped as Uncategorized.")
     if "units_sold" not in df.columns:
         df["units_sold"] = 0
-        warnings.append("No units/quantity column found — Units Sold will show as 0.")
+        warnings.append("No units or quantity column found. Units Sold is shown as 0.")
+
+    df["units_sold"] = pd.to_numeric(df["units_sold"], errors="coerce").fillna(0)
+
     if "net_sales" not in df.columns:
         if "unit_price" in df.columns:
-            df["units_sold"] = pd.to_numeric(df["units_sold"], errors="coerce").fillna(0)
             df["net_sales"] = df["units_sold"] * pd.to_numeric(df["unit_price"], errors="coerce").fillna(0)
         else:
             df["net_sales"] = 0
-            warnings.append("No sales/revenue data found — add a 'net_sales' or 'unit_price' column for real figures.")
+            warnings.append("No sales or revenue column found. Add net_sales or unit_price for meaningful sales KPIs.")
+
     if "cogs" not in df.columns:
         if "unit_cost" in df.columns:
-            df["units_sold"] = pd.to_numeric(df["units_sold"], errors="coerce").fillna(0)
             df["cogs"] = df["units_sold"] * pd.to_numeric(df["unit_cost"], errors="coerce").fillna(0)
         else:
             df["cogs"] = 0
-            warnings.append("No cost data found — add a 'cogs' or 'unit_cost' column to see real profit figures.")
+            warnings.append("No cost column found. Add cogs or unit_cost for meaningful profit KPIs.")
+
     if "opex" not in df.columns:
         df["opex"] = 0
     if "stock_qty" not in df.columns:
         df["stock_qty"] = None
-        warnings.append("No stock/inventory column found — inventory metrics will be blank.")
+        warnings.append("No stock or inventory column found. Inventory KPIs are unavailable.")
     if "reorder_level" not in df.columns:
         df["reorder_level"] = None
     if "date" not in df.columns:
         df["date"] = None
 
-    for col in ["units_sold", "net_sales", "cogs", "opex"]:
+    for col in ["net_sales", "cogs", "opex"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
     for col in ["stock_qty", "reorder_level"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
+    df["product"] = df["product"].fillna("Unknown Product").astype(str)
+    df["category"] = df["category"].fillna("Uncategorized").astype(str)
     return df, warnings
 
-
 def compute_dashboard_data(df: pd.DataFrame, tax_rate: float = 0.25) -> dict:
+    df, schema_warnings = prepare_business_dataframe(df)
     net_sales = float(df["net_sales"].sum())
     cogs = float(df["cogs"].sum())
     gross_profit = net_sales - cogs
@@ -180,7 +209,7 @@ def compute_dashboard_data(df: pd.DataFrame, tax_rate: float = 0.25) -> dict:
     )
 
     # ---- Inventory ----
-    has_stock = grouped["stock_qty"].notna().any()
+    has_stock = bool(grouped["stock_qty"].notna().any())
     stock_qty_total = float(grouped["stock_qty"].fillna(0).sum())
     inventory_value = float((grouped["stock_qty"].fillna(0) * grouped["unit_cost_est"]).sum())
     denom = units_sold + stock_qty_total
@@ -285,6 +314,7 @@ def compute_dashboard_data(df: pd.DataFrame, tax_rate: float = 0.25) -> dict:
         "top_products": top_products,
         "category_performance": cat_perf,
         "stock_alerts": stock_alerts,
+        "schema_warnings": schema_warnings,
     }
 
 

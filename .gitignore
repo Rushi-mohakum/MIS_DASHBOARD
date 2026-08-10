@@ -1,11 +1,9 @@
-venv/
-env/
 .venv/
+venv/
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .env
-*.env
 .DS_Store
-.vscode/settings.json
-instance/
+reports/
+*.log
+.vscode/

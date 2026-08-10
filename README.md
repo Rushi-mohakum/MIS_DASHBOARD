@@ -1,99 +1,64 @@
-# MIS Dashboard
+# MIS Intelligence Studio
 
-Run it, upload a data file, get a Sales / Inventory / P&L dashboard — with a
-downloadable Excel report and AI-generated business insights. No database,
-no accounts, no fixed company setup — anyone can run this and point it at
-their own Excel/CSV/PDF/Word data.
+A Flask-based MIS and data-analysis dashboard that combines the original MIS Dashboard with selected InsightForge-AI capabilities in a vibrant gradient interface.
 
-## Setup
+## Included features
+
+- CSV, Excel, PDF-table and Word-table upload
+- Automatic mapping of common sales, product, category, profit and inventory columns
+- Sales, P&L, product, category and inventory dashboards
+- Data-quality score, missing-value analysis, duplicates, column profiling and correlations
+- Reversible data-cleaning actions with a session history
+- Custom chart builder
+- Calculated dataset chat for common MIS questions
+- Gemini-powered insights and broader chat when `GEMINI_API_KEY` is configured
+- Rule-based AI fallback when no API key is available
+- PDF, Excel, cleaned CSV and cleaned Excel downloads
+- Render health-check endpoint at `/health`
+
+## Local setup
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-## Run
-
-```bash
 python app.py
 ```
 
-Open **http://localhost:5050**, upload a file, and the dashboard renders immediately.
-Nothing is written to permanent storage — each upload is cached in a temp folder
-only for the duration of your session (so Download and AI Insights can reuse it),
-and is never sent anywhere except to the AI Insights feature if you use it.
+Open `http://localhost:5050`.
 
-## AI Insights setup
+## Environment variables
 
-The dashboard includes a "Generate Insights" button that sends your computed
-KPIs (not the raw file — just the numbers already shown on the dashboard) to
-Google Gemini and asks for: which KPIs to watch, where output/volume could
-improve, and where to focus investment, based only on the data you uploaded.
-
-To enable it, set an API key as an environment variable before running the app:
-
-```bash
-export GEMINI_API_KEY=your-key-here      # Mac/Linux  
-set GEMINI_API_KEY=your-key-here         # Windows (cmd)
-$env:GEMINI_API_KEY="your-key-here"      # Windows (PowerShell)
+```env
+MIS_SECRET_KEY=replace-with-a-long-random-value
+GEMINI_API_KEY=your-google-ai-studio-key
+GEMINI_MODEL=gemini-3.6-flash
 ```
 
-Get a **free** key at **aistudio.google.com** — no credit card required, just
-a Google account. Click "Get API key" → "Create API key". The free tier
-(Gemini 2.5 Flash) is generous enough for regular personal use of this
-dashboard. Without a key set, the dashboard still works fully — the AI
-Insights button will just show a message explaining how to enable it.
+`GEMINI_API_KEY` is optional. Calculated MIS questions and rule-based management insights work without it.
 
-## Download
+## Render configuration
 
-- **Download Excel Report** — a formatted 6-sheet workbook (Summary, P&L
-  Snapshot, Top Products, Category Performance, Monthly Trend, Inventory Alerts)
-  regenerated fresh from your uploaded data.
-- **Print / Save PDF** — uses the browser's print dialog with a print-friendly
-  stylesheet (hides buttons/AI panel, switches to a light background) — choose
-  "Save as PDF" as the destination in the print dialog for a PDF snapshot.
+Use these values in the existing Render web service:
 
-## Supported files
+- Build command: `pip install -r requirements.txt`
+- Start command: `gunicorn app:app --bind 0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
+- Health check path: `/health`
+- Auto-Deploy: `On Commit`
+- Branch: `main`
 
-- **.xlsx / .xls / .csv** — most reliable. Read directly as a table.
-- **.pdf** — the app looks for a real data table inside the PDF (via `pdfplumber`).
-  Scanned/image-only PDFs won't work.
-- **.docx** — the app looks for a Word table (via `python-docx`).
+After pushing a commit to the linked `main` branch, Render should rebuild and deploy automatically when Auto-Deploy is enabled.
 
-## Recommended columns
+## Git update
 
-Column names are matched case-insensitively and a lot of common variants are
-auto-detected (e.g. `qty`, `units`, `quantity` all map to units sold). Nothing
-is required — missing columns just default to zero/blank and the dashboard
-tells you what it filled in.
+Copy these files into the existing `MIS-Dashboard` repository, then run:
 
-| Canonical column | Accepted variants | Used for |
-|---|---|---|
-| `date` | entry_date, month, order_date, transaction_date, period | monthly trend chart, month-over-month growth badge |
-| `product` | item, item_name, sku, product_name | grouping, top products table |
-| `category` | product_category, type, segment, department | category mix donut, category performance table |
-| `units_sold` | qty, quantity, units, qty_sold, sold_qty | units sold KPI, sell-through |
-| `unit_price` | price, rate, selling_price, mrp | computes net_sales if net_sales isn't given directly |
-| `net_sales` | sales, revenue, total_sales, amount, gross_sales | Net Sales KPI (or derived from unit_price × units_sold) |
-| `unit_cost` | cost, cost_price, cogs_per_unit, purchase_price | computes cogs if cogs isn't given directly |
-| `cogs` | cost_of_goods_sold, total_cost | Gross Profit calculation |
-| `opex` | operating_expense(s), expenses | EBITDA calculation (optional, defaults to 0) |
-| `stock_qty` | stock, inventory, current_stock, closing_stock, on_hand | Inventory Value, Sell-Through, Stock Alerts |
-| `reorder_level` | reorder_point, min_stock, safety_stock | Stock Alerts (optional; defaults to 0) |
+```bash
+git add .
+git commit -m "Build MIS Intelligence Studio vibrant gradient dashboard"
+git push origin main
+```
 
-A sample file that works out of the box is included at `sample_data/sample_sales_data.xlsx`.
+## Current storage behavior
 
-## Assumptions in the P&L
-
-Because a generic upload rarely includes a full accounting breakdown, the app
-makes some simplifying assumptions, shown as a note under the P&L chart:
-
-- **Gross Sales = Net Sales** (no returns/discounts data)
-- **EBIT = PBT = EBITDA** (no depreciation or interest data)
-- **Net Profit = PBT × (1 − tax rate)**, where you set the tax rate on the upload screen (default 25%)
-
-If your data includes real `opex`, these numbers will reflect it. Everything
-else is derived purely from units, price, and cost. The AI Insights feature is
-told about these same assumptions and instructed not to invent numbers or
-markets beyond what's in your data.
+Uploaded files are held in a temporary server-side session cache. A Render restart can clear the active dataset. Persistent MySQL upload history, user login and role permissions are planned for Phase 2.
