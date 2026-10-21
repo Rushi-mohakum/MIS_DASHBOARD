@@ -290,3 +290,10 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .upload-hero, .upload-form-panel { padding: 28px 20px; }
 }
+
+
+/* Production Analytics entry point: visually distinct from the vibrant Business MIS theme. */
+a.nav-item.production-route-link { text-decoration: none; position: relative; }
+a.nav-item.production-route-link .production-link-label { flex: 1; min-width: 0; font-size: 11px; line-height: 1.25; }
+a.nav-item.production-route-link:hover { color: #e8fffd; background: linear-gradient(100deg, rgba(19,215,160,.12), rgba(37,137,255,.12)); }
+a.nav-item.production-route-link .production-badge { color: #06383c; background: linear-gradient(100deg, #28eed0, #36baff); }

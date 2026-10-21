@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#061c23">
+  <title>Production Analytics Dashboard | MIS Intelligence Studio</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/production.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body class="production-theme">
+<div class="prod-shell">
+  <aside class="prod-sidebar" id="prodSidebar">
+    <a class="prod-brand" href="{{ url_for('upload_page') }}">
+      <span class="prod-brand-icon">M</span>
+      <span><strong>MIS</strong><small>INTELLIGENCE STUDIO</small></span>
+    </a>
+    <div class="prod-sidebar-label">WORKSPACE</div>
+    <nav class="prod-nav" aria-label="Dashboard navigation">
+      <a class="prod-nav-link" href="{{ url_for('upload_page') }}"><span class="nav-symbol">⌂</span><span>Upload Center<small>Detect dataset type</small></span></a>
+      <a class="prod-nav-link" href="{{ url_for('dashboard') }}"><span class="nav-symbol">▥</span><span>Business MIS Dashboard<small>Open saved sales dataset</small></span></a>
+      <a class="prod-nav-link active" href="{{ url_for('production_dashboard') }}"><span class="nav-symbol">▦</span><span>Production Analytics<small>Plant & factory intelligence</small></span></a>
+      <a class="prod-nav-link" href="{{ url_for('download_production_summary') }}"><span class="nav-symbol">⇩</span><span>Reports & Exports<small>Production summary workbook</small></span></a>
+    </nav>
+    <div class="prod-sidebar-spacer"></div>
+    {% if has_production %}
+    <div class="prod-source-card">
+      <div class="prod-source-eyebrow"><span class="status-dot"></span> ACTIVE WORKBOOK</div>
+      <strong class="prod-source-file">{{ filename }}</strong>
+      <div class="prod-source-meta">{{ production.sheet_count }} worksheets detected</div>
+      <div class="prod-source-period">{{ production.period_label }}</div>
+      <a href="{{ url_for('upload_page') }}" class="prod-source-action">Switch dataset <span>↗</span></a>
+    </div>
+    {% else %}
+    <div class="prod-source-card">
+      <div class="prod-source-eyebrow">NO PRODUCTION FILE</div>
+      <strong class="prod-source-file">Upload a workbook</strong>
+      <div class="prod-source-meta">The app will detect sales or production data automatically.</div>
+    </div>
+    {% endif %}
+    <div class="prod-sidebar-footer"><span class="footer-orb"></span> Production Intelligence · v1.0</div>
+  </aside>
+
+  <main class="prod-main">
+    <header class="prod-topbar">
+      <div class="prod-topbar-left">
+        <button class="prod-mobile-menu" id="prodMobileMenu" aria-label="Open navigation">☰</button>
+        <div class="prod-breadcrumb">MIS INTELLIGENCE STUDIO <span>/</span> MANUFACTURING</div>
+        <h1>Production Analytics Dashboard</h1>
+        <p>Plant performance, quality, workforce and material intelligence in one place.</p>
+      </div>
+      <div class="prod-top-actions">
+        {% if has_production %}
+        <div class="prod-period-pill"><span>◷</span><span>{{ production.period_label }}</span></div>
+        <a class="prod-button prod-button-ghost" href="{{ url_for('upload_page') }}">＋ Upload file</a>
+        <a class="prod-button prod-button-primary" href="{{ url_for('download_production_summary') }}">⇩ Export summary</a>
+        {% else %}
+        <a class="prod-button prod-button-primary" href="{{ url_for('upload_page') }}">＋ Upload workbook</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="prod-flash-stack">
+        {% for category, message in messages %}<div class="prod-flash {{ category }}">{{ message }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    {% if not has_production %}
+    <section class="prod-empty-state">
+      <div class="prod-empty-visual"><div class="empty-ring ring-one"></div><div class="empty-ring ring-two"></div><div class="empty-factory">▦</div></div>
+      <div class="prod-eyebrow">AUTOMATIC DATA DETECTION</div>
+      <h2>Turn your factory workbook into live production intelligence.</h2>
+      <p>Upload a production Excel workbook with sheets such as Production, Prod Eff, Inspection, Plan, Mold, Pareto or MSEB Reading. The system will detect the workbook type and open the correct dashboard.</p>
+      <form method="post" action="{{ url_for('dashboard') }}" enctype="multipart/form-data" class="prod-empty-upload">
+        <label for="prodEmptyFile" class="prod-dropzone">
+          <span class="drop-icon">⇧</span>
+          <strong>Select an Excel or CSV file</strong>
+          <small>Supported: .xlsx, .xls, .csv, .pdf, .docx</small>
+          <span class="prod-picked-file" id="prodPickedFile">No file selected</span>
+        </label>
+        <input id="prodEmptyFile" name="file" type="file" accept=".xlsx,.xls,.csv,.pdf,.docx" required>
+        <input type="hidden" name="tax_rate" value="25">
+        <button class="prod-button prod-button-primary" type="submit">Detect file & open dashboard <span>→</span></button>
+      </form>
+      <div class="prod-empty-note"><span>✓</span> Sales files open Business MIS · Production workbooks open this dashboard</div>
+    </section>
+    {% else %}
+    {% set kpi = production.kpi %}
+    {% if production.warnings %}
+    <div class="prod-notice">
+      <div class="notice-icon">i</div><div><strong>Workbook mapping notes</strong><ul>{% for warning in production.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>
+    </div>
+    {% endif %}
+
+    <section class="prod-hero-strip">
+      <div class="hero-left">
+        <div class="prod-live-label"><span class="status-dot"></span> WORKBOOK ANALYTICS READY</div>
+        <h2>Factory performance at a glance<span>.</span></h2>
+        <p>Metrics are calculated from detected worksheet data. Missing fields are not estimated.</p>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><small>REPORTING PERIOD</small><strong>{{ production.period_label }}</strong></div>
+        <div class="hero-meta-item"><small>WORKSHEETS MAPPED</small><strong>{{ production.sheet_count }} <span>tabs</span></strong></div>
+      </div>
+      <div class="hero-grid-glow"></div>
+    </section>
+
+    <section class="prod-kpi-grid">
+      <article class="prod-kpi-card kpi-cyan">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">▦</span><span class="prod-kpi-label">Total Production</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.total_production|compact_number if production.metric_status.production else "—" }}</div>
+        <div class="prod-kpi-foot"><span class="kpi-line"></span><span>Recorded output</span></div>
+      </article>
+      <article class="prod-kpi-card kpi-green">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">✓</span><span class="prod-kpi-label">OK Production</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.ok_production|compact_number if production.metric_status.ok_production else "—" }}</div>
+        <div class="prod-kpi-foot"><span class="kpi-line"></span><span>Accepted output</span></div>
+      </article>
+      <article class="prod-kpi-card kpi-red">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">×</span><span class="prod-kpi-label">Rejected Quantity</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.rejected_qty|compact_number if production.metric_status.rejection else "—" }}</div>
+        <div class="prod-kpi-foot"><span class="kpi-negative">{{ kpi.rejection_pct ~ "%" if production.metric_status.production else "—" }}</span><span>of total production</span></div>
+      </article>
+      <article class="prod-kpi-card kpi-amber">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">◎</span><span class="prod-kpi-label">Target Achievement</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.achievement_pct if production.metric_status.target else "—" }}{% if production.metric_status.target %}<small>%</small>{% endif %}</div>
+        <div class="prod-progress"><span style="width:{{ [kpi.achievement_pct, 100]|min if production.metric_status.target else 0 }}%"></span></div>
+        <div class="prod-kpi-foot"><span>{{ kpi.total_production|compact_number if production.metric_status.production else "—" }} actual</span><span>{{ kpi.production_target|compact_number if production.metric_status.target else "—" }} target</span></div>
+      </article>
+      <article class="prod-kpi-card kpi-violet">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">◉</span><span class="prod-kpi-label">Average OEE</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.oee_pct if production.metric_status.oee else "—" }}{% if production.metric_status.oee %}<small>%</small>{% endif %}</div>
+        <div class="prod-kpi-foot"><span class="kpi-line"></span><span>Valid OEE readings</span></div>
+      </article>
+      <article class="prod-kpi-card kpi-blue">
+        <div class="prod-kpi-top"><span class="prod-kpi-icon">♟</span><span class="prod-kpi-label">Operators & Inspectors</span><span class="prod-kpi-dots">•••</span></div>
+        <div class="prod-kpi-value">{{ kpi.workforce_count }}</div>
+        <div class="prod-kpi-foot"><span class="kpi-line"></span><span>Unique names in log</span></div>
+      </article>
+    </section>
+
+    <nav class="prod-tabs" aria-label="Production analytics modules">
+      <button class="prod-tab active" data-prod-tab="overview"><span>◈</span> Overview</button>
+      <button class="prod-tab" data-prod-tab="plant"><span>▦</span> Plant & Machine</button>
+      <button class="prod-tab" data-prod-tab="quality"><span>◇</span> Quality & Rejection</button>
+      <button class="prod-tab" data-prod-tab="workforce"><span>♟</span> Workforce & Inspection</button>
+      <button class="prod-tab" data-prod-tab="planning"><span>⌁</span> Planning & Materials</button>
+      <button class="prod-tab" data-prod-tab="energy"><span>ϟ</span> Energy & Maintenance</button>
+    </nav>
+
+    <section class="prod-panel active" data-prod-panel="overview">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">EXECUTIVE OVERVIEW</div><h2>Production performance</h2><p>Output, quality, machine efficiency and resources for the detected period.</p></div><span class="prod-section-period">{{ production.period_label }}</span></div>
+      <div class="prod-chart-grid">
+        <article class="prod-panel-card span-2"><div class="prod-card-heading"><div><h3>Production trend</h3><p>Total output, OK output and rejected quantity by day</p></div><span class="chart-icon cyan">↗</span></div><div class="prod-chart-wrap chart-tall"><canvas id="overviewTrend"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Plant-wise production</h3><p>Output contribution by plant</p></div><span class="chart-icon green">▦</span></div><div class="prod-chart-wrap"><canvas id="overviewPlant"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Production vs target</h3><p>Actual output compared with target</p></div><span class="chart-icon blue">◎</span></div><div class="prod-chart-wrap"><canvas id="overviewTarget"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Machine-wise output</h3><p>Top recorded machines</p></div><span class="chart-icon blue">⚙</span></div><div class="prod-chart-wrap"><canvas id="overviewMachines"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Rejection analysis</h3><p>Defect counts from Inspection sheet</p></div><span class="chart-icon red">!</span></div><div class="prod-chart-wrap"><canvas id="overviewDefects"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>OEE by plant</h3><p>Average valid OEE readings</p></div><span class="chart-icon violet">◉</span></div><div class="prod-chart-wrap"><canvas id="overviewOee"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Shift-wise production</h3><p>Output by shift</p></div><span class="chart-icon amber">◷</span></div><div class="prod-chart-wrap"><canvas id="overviewShift"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Material usage vs requirement</h3><p>Actual consumption compared with requirement</p></div><span class="chart-icon green">⬡</span></div>
+          <div class="material-summary"><div><small>ACTUAL USED</small><strong>{{ kpi.material_used|compact_number if production.metric_status.material else "—" }}</strong></div><div><small>REQUIRED</small><strong>{{ kpi.material_required|compact_number if production.metric_status.material else "—" }}</strong></div></div>
+          <div class="prod-chart-wrap chart-short"><canvas id="overviewMaterial"></canvas></div>
+          <div class="prod-card-foot">Variance: <strong class="{% if kpi.material_variance_pct > 0 %}text-amber{% elif kpi.material_variance_pct < 0 %}text-green{% else %}text-muted{% endif %}">{{ '%+.1f'|format(kpi.material_variance_pct) ~ '%' if production.metric_status.material else '—' }}</strong></div>
+        </article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Operations snapshot</h3><p>Assets, downtime and action items</p></div><span class="chart-icon cyan">⌁</span></div>
+          <div class="prod-mini-stats">
+            <div><span>Plants recorded</span><strong>{{ kpi.plant_count }}</strong></div>
+            <div><span>Machines recorded</span><strong>{{ kpi.machine_count }}</strong></div>
+            <div><span>Molds in master</span><strong>{{ kpi.mold_count }}</strong></div>
+            <div><span>Downtime minutes</span><strong>{{ kpi.downtime_minutes|compact_number }}</strong></div>
+            <div><span>Incident records</span><strong>{{ kpi.incident_count }}</strong></div>
+            <div><span>Open incidents</span><strong class="{% if production.module_status.incident_status and kpi.open_incidents %}text-red{% elif production.module_status.incident_status %}text-green{% else %}text-muted{% endif %}">{{ kpi.open_incidents if production.module_status.incident_status else '—' }}</strong></div>
+          </div>
+          <button class="prod-inline-link" data-prod-open="energy">View maintenance & incidents <span>→</span></button>
+        </article>
+      </div>
+    </section>
+
+    <section class="prod-panel" data-prod-panel="plant">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">ASSET PERFORMANCE</div><h2>Plant & Machine</h2><p>Compare plant output, target achievement and machine OEE.</p></div></div>
+      <div class="prod-two-column">
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Plant output and OK production</h3><p>Aggregated from the production log</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="plantDetailChart"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Plant OEE</h3><p>Invalid or out-of-range readings excluded</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="plantOeeDetailChart"></canvas></div></article>
+      </div>
+      <article class="prod-panel-card prod-table-card"><div class="prod-card-heading"><div><h3>Machine performance leaderboard</h3><p>Top machines by recorded production</p></div><span class="prod-count-pill">{{ production.machines|length }} machines</span></div>
+        <div class="prod-table-scroll"><table class="prod-table"><thead><tr><th>Machine</th><th>Total production</th><th>OK production</th><th>Rejected</th><th>Target</th><th>OEE</th></tr></thead><tbody>
+        {% for machine in production.machines %}<tr><td><span class="machine-dot"></span><strong>{{ machine.machine }}</strong></td><td>{{ machine.total|compact_number }}</td><td>{{ machine.ok|compact_number }}</td><td class="text-red">{{ machine.rejected|compact_number }}</td><td>{{ machine.target|compact_number if machine.target is not none else '—' }}</td><td><span class="prod-oee-pill">{{ machine.oee_pct ~ '%' if machine.oee_pct is not none else '—' }}</span></td></tr>{% else %}<tr><td colspan="6" class="prod-empty-cell">No machine-level rows were detected.</td></tr>{% endfor %}
+        </tbody></table></div>
+      </article>
+    </section>
+
+    <section class="prod-panel" data-prod-panel="quality">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">QUALITY INTELLIGENCE</div><h2>Quality & Rejection</h2><p>Find dominant defect categories and products with high rejection counts.</p></div></div>
+      <div class="prod-mini-kpi-row">
+        <div class="prod-mini-kpi"><small>REJECTED QUANTITY</small><strong>{{ kpi.rejected_qty|compact_number if production.metric_status.rejection else '—' }}</strong><span>{{ kpi.rejection_pct ~ '%' if production.metric_status.production else '—' }} of output</span></div>
+        <div class="prod-mini-kpi"><small>CALCULATED PPM</small><strong>{{ kpi.quality_ppm|compact_number if production.metric_status.production else '—' }}</strong><span>Rejected quantity / production × 1,000,000</span></div>
+        <div class="prod-mini-kpi"><small>DEFECT CATEGORIES</small><strong>{{ production.defects|length }}</strong><span>With numeric counts</span></div>
+      </div>
+      <div class="prod-two-column">
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Defect Pareto</h3><p>Counts by inspection defect type</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="qualityDefectChart"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Product rejection Pareto</h3><p>Source: Pareto worksheet</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="qualityProductChart"></canvas></div></article>
+      </div>
+      <article class="prod-panel-card prod-table-card"><div class="prod-card-heading"><div><h3>Defect register summary</h3><p>Only numeric defect values are included</p></div></div><div class="prod-table-scroll"><table class="prod-table"><thead><tr><th>Defect</th><th>Rejected quantity</th><th>Share of listed defects</th></tr></thead><tbody>
+      {% set defect_total = production.defects|sum(attribute='qty') %}
+      {% for defect in production.defects %}<tr><td><span class="defect-marker"></span><strong>{{ defect.defect }}</strong></td><td>{{ defect.qty|compact_number }}</td><td>{{ ((defect.qty / defect_total * 100) if defect_total else 0)|round(1) }}%</td></tr>{% else %}<tr><td colspan="3" class="prod-empty-cell">No numeric defect counts were detected in the Inspection worksheet.</td></tr>{% endfor %}
+      </tbody></table></div></article>
+    </section>
+
+    <section class="prod-panel" data-prod-panel="workforce">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">PEOPLE & PRODUCTIVITY</div><h2>Workforce & Inspection</h2><p>Operator coverage, inspection efficiency and attendance where the workbook provides it.</p></div></div>
+      <div class="prod-mini-kpi-row">
+        <div class="prod-mini-kpi"><small>UNIQUE OPERATORS & INSPECTORS</small><strong>{{ kpi.workforce_count }}</strong><span>Names found in production log</span></div>
+        <div class="prod-mini-kpi"><small>ATTENDANCE DATE</small><strong>{{ production.attendance.date or 'Not mapped' }}</strong><span>From Atte worksheet</span></div>
+        <div class="prod-mini-kpi"><small>RECORDED PRESENT</small><strong>{{ production.attendance.present if production.attendance.available else '—' }}</strong><span>{% if production.attendance.available %}Positive attendance entries{% else %}Attendance date columns not detected{% endif %}</span></div>
+      </div>
+      <div class="prod-two-column">
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Operator / inspector efficiency</h3><p>Top valid efficiency values from the efficiency worksheet</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="workforceEfficiencyChart"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Workforce notes</h3><p>Coverage and data interpretation</p></div></div>
+          <div class="prod-explain-list"><div><span class="explain-number">01</span><div><strong>Operator coverage</strong><p>Distinct operator and inspector names are counted from production entries. This is not a payroll headcount.</p></div></div><div><span class="explain-number">02</span><div><strong>Attendance</strong><p>{% if production.attendance.available %}Latest attendance column detected: {{ production.attendance.date }}.{% else %}Attendance values could not be reliably mapped to dated columns.{% endif %}</p></div></div><div><span class="explain-number">03</span><div><strong>Efficiency</strong><p>Only numeric values between 0% and 150% are included to reduce the impact of obvious formula errors.</p></div></div></div>
+        </article>
+      </div>
+      <article class="prod-panel-card prod-table-card"><div class="prod-card-heading"><div><h3>Efficiency leaderboard</h3><p>Top recorded efficiency by operator</p></div></div><div class="prod-table-scroll"><table class="prod-table"><thead><tr><th>Operator / Inspector</th><th>Efficiency</th><th>Indicator</th></tr></thead><tbody>
+      {% for person in production.operators %}<tr><td><strong>{{ person.operator }}</strong></td><td>{{ person.efficiency_pct }}%</td><td><div class="efficiency-track"><span style="width:{{ [person.efficiency_pct, 100]|min }}%"></span></div></td></tr>{% else %}<tr><td colspan="3" class="prod-empty-cell">No valid operator efficiency rows were found.</td></tr>{% endfor %}
+      </tbody></table></div></article>
+    </section>
+
+    <section class="prod-panel" data-prod-panel="planning">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">PLANNING & MATERIAL FLOW</div><h2>Planning, Molds & Materials</h2><p>Compare actual output to production targets and review material and schedule balances.</p></div></div>
+      <div class="prod-two-column">
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Target vs actual production</h3><p>Production log targets and actual output</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="planningTargetChart"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Material usage vs requirement</h3><p>Available material fields from production / plan sheets</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="planningMaterialChart"></canvas></div></article>
+      </div>
+      <div class="prod-mini-kpi-row">
+        <div class="prod-mini-kpi"><small>PLANNED SHOTS</small><strong>{{ kpi.planned_shots|compact_number }}</strong><span>From Plan worksheet</span></div>
+        <div class="prod-mini-kpi"><small>MOLD MASTER COUNT</small><strong>{{ kpi.mold_count }}</strong><span>Unique mold numbers</span></div>
+        <div class="prod-mini-kpi"><small>AVERAGE CAVITIES</small><strong>{{ kpi.average_cavities }}</strong><span>Positive cavity values</span></div>
+      </div>
+      <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Schedule and stock snapshot</h3><p>Aggregated values from SCH. worksheet</p></div></div>
+        {% if production.schedule.available %}<div class="prod-schedule-grid"><div><small>Dispatch balance</small><strong>{{ production.schedule.dispatch_balance|compact_number }}</strong></div><div><small>Production pending</small><strong>{{ production.schedule.production_pending|compact_number }}</strong></div><div><small>Inspection pending</small><strong>{{ production.schedule.inspection_pending|compact_number }}</strong></div><div><small>Stock</small><strong>{{ production.schedule.stock|compact_number }}</strong></div></div>{% else %}<div class="prod-empty-cell">No schedule worksheet detected.</div>{% endif %}
+      </article>
+    </section>
+
+    <section class="prod-panel" data-prod-panel="energy">
+      <div class="prod-section-heading"><div><div class="prod-eyebrow">UTILITIES & CORRECTIVE ACTIONS</div><h2>Energy & Maintenance</h2><p>Track available energy readings, downtime categories and incident status.</p></div></div>
+      <div class="prod-mini-kpi-row">
+        <div class="prod-mini-kpi"><small>TOTAL DOWNTIME</small><strong>{{ kpi.downtime_minutes|compact_number }} <small>min</small></strong><span>From recorded downtime fields</span></div>
+        <div class="prod-mini-kpi"><small>INCIDENT RECORDS</small><strong>{{ kpi.incident_count }}</strong><span>Rows with incident data</span></div>
+        <div class="prod-mini-kpi"><small>OPEN INCIDENTS</small><strong class="{% if production.module_status.incident_status and kpi.open_incidents %}text-red{% elif production.module_status.incident_status %}text-green{% else %}text-muted{% endif %}">{{ kpi.open_incidents if production.module_status.incident_status else '—' }}</strong><span>Based on status field</span></div>
+      </div>
+      <div class="prod-two-column">
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Downtime by reason</h3><p>Minutes recorded in production sheet</p></div></div><div class="prod-chart-wrap chart-tall"><canvas id="energyDowntimeChart"></canvas></div></article>
+        <article class="prod-panel-card"><div class="prod-card-heading"><div><h3>Energy usage trend</h3><p>{% if production.energy.available %}Dated used-unit values from MSEB Reading{% else %}No positive dated used-unit values available{% endif %}</p></div></div>
+          {% if production.energy.available %}<div class="energy-latest"><small>LATEST RECORDED USAGE</small><strong>{{ production.energy.latest_total|compact_number }}</strong><span>{{ production.energy.latest_date }}</span></div>{% endif %}
+          <div class="prod-chart-wrap chart-tall"><canvas id="energyUsageChart"></canvas></div>
+        </article>
+      </div>
+      <article class="prod-panel-card prod-table-card"><div class="prod-card-heading"><div><h3>Incident register</h3><p>Recent incidents with recorded status</p></div><span class="prod-count-pill">{{ production.incidents|length }} shown</span></div><div class="prod-table-scroll"><table class="prod-table"><thead><tr><th>Date</th><th>Incident type</th><th>Department / location</th><th>Status</th></tr></thead><tbody>
+      {% for incident in production.incidents %}<tr><td>{{ incident.date }}</td><td><strong>{{ incident.type }}</strong></td><td>{{ incident.location }}</td><td><span class="status-pill {% if incident.status|lower == 'open' %}status-open{% elif incident.status|lower == 'closed' %}status-closed{% else %}status-neutral{% endif %}">{{ incident.status }}</span></td></tr>{% else %}<tr><td colspan="4" class="prod-empty-cell">No incident records were detected.</td></tr>{% endfor %}
+      </tbody></table></div></article>
+    </section>
+    {% endif %}
+
+    <footer class="prod-footer"><span>MIS Intelligence Studio</span><span>Production Analytics Dashboard <i></i> {{ filename or 'Waiting for workbook' }}</span></footer>
+  </main>
+</div>
+{% if has_production %}
+<script>
+  window.PRODUCTION_DATA = {{ production|tojson }};
+</script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/production.js') }}"></script>
+</body>
+</html>

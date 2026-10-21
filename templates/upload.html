@@ -18,12 +18,13 @@
       <section class="upload-hero">
         <div class="brand" style="padding:0;">
           <div class="brand-mark">📈</div>
-          <div><div class="brand-title">MIS Intelligence Studio</div><div class="brand-sub">Business MIS + AI Analytics</div></div>
+          <div><div class="brand-title">MIS Intelligence Studio</div><div class="brand-sub">Business MIS + Production Analytics</div></div>
         </div>
-        <h1>Turn business data into decisions.</h1>
-        <p>Upload a sales, inventory, P&amp;L or general business dataset. The platform will map common columns, calculate MIS KPIs, score data quality, clean records, build charts, generate insights and export management reports.</p>
+        <h1>Upload your workbook. Open the right dashboard automatically.</h1>
+        <p>Upload a sales, inventory, P&amp;L or production workbook. MIS Intelligence Studio detects the dataset type, then opens either the vibrant Business MIS dashboard or the separate industrial-theme Production Analytics Dashboard.</p>
         <div class="feature-pills">
-          <span class="feature-pill">📊 MIS Dashboards</span>
+          <span class="feature-pill">📊 Business MIS</span>
+          <span class="feature-pill">🏭 Production Analytics</span>
           <span class="feature-pill">♢ Data Quality</span>
           <span class="feature-pill">⌁ Data Cleaning</span>
           <span class="feature-pill">✣ AI Insights</span>
@@ -31,8 +32,9 @@
           <span class="feature-pill">📄 PDF &amp; Excel</span>
         </div>
         <div style="margin-top:34px;color:#c7b9dd;font-size:11px;line-height:1.8;">
-          <strong style="color:white;">Recommended columns</strong><br>
-          date · product · category · units_sold · net_sales or unit_price · cogs or unit_cost · opex · stock_qty · reorder_level
+          <strong style="color:white;">Automatic workbook detection</strong><br>
+          Sales: invoice, customer, date, quantity, sales or revenue columns.<br>
+          Production: Production, Prod Eff, Inspection, Plan, Mold, Pareto, MSEB Reading and related sheets.
         </div>
       </section>
 
@@ -51,18 +53,19 @@
           <input id="uploadFile" type="file" name="file" accept=".xlsx,.xls,.csv,.pdf,.docx" required style="display:none;">
 
           <div class="field" style="margin-top:17px;">
-            <label for="taxRate">Tax rate for calculated net profit (%)</label>
+            <label for="taxRate">Tax rate for calculated net profit (%) · Business MIS only</label>
             <input id="taxRate" type="number" name="tax_rate" value="25" min="0" max="100" step="1">
           </div>
 
-          <button class="primary-btn block-btn" type="submit" style="margin-top:17px;min-height:45px;">Generate MIS Dashboard</button>
-          {% if has_dataset %}<a class="secondary-btn block-btn" href="{{ url_for('dashboard') }}" style="margin-top:9px;">Open Current Dashboard</a>{% endif %}
+          <button class="primary-btn block-btn" type="submit" style="margin-top:17px;min-height:45px;">Detect file & open dashboard</button>
+          {% if has_business_dataset %}<a class="secondary-btn block-btn" href="{{ url_for('dashboard') }}" style="margin-top:9px;">Open Business MIS Dashboard</a>{% endif %}
+          {% if has_production_dataset %}<a class="secondary-btn block-btn" href="{{ url_for('production_dashboard') }}" style="margin-top:9px;">Open Production Analytics Dashboard</a>{% endif %}
         </form>
 
         <div class="metric-list" style="margin-top:22px;">
           <div class="metric-row"><span>AI Insights</span><strong class="{% if has_api_key %}good{% else %}warn{% endif %}">{% if has_api_key %}Gemini configured{% else %}Local fallback active{% endif %}</strong></div>
           <div class="metric-row"><span>Data storage</span><strong>Temporary session cache</strong></div>
-          <div class="metric-row"><span>Automatic mapping</span><strong>Common MIS columns</strong></div>
+          <div class="metric-row"><span>Automatic mapping</span><strong>Sales + production workbooks</strong></div>
         </div>
       </section>
     </div>
